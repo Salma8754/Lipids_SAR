@@ -1,17 +1,18 @@
-from rdkit import Chem
-from rdkit.Chem import Draw
-from streamlit_image_select import image_select
 import streamlit as st
-import PIL.Image
-from data_fetcher import df
-import io
-from PIL import Image
+from streamlit_image_select import image_select
 
+from PIL import Image
+import PIL.Image
+import os
+
+from data_fetcher import df
 from fragments import link_fragments, head_fragments
 from utils import smiles_to_img, smarts_to_img
 
-df["num_tails"] = df["num_tails"].astype(int)
 
+base_dir = os.path.abspath(os.path.dirname(__file__))
+
+df["num_tails"] = df["num_tails"].astype(int)
 
 
 # Set the page configuration
@@ -48,13 +49,17 @@ head_img_dict = {head_fragments[i] : head_imgs[i] for i in range(len(head_imgs))
 
 
 # Tail saturation conf
-img_saturated_tail = PIL.Image.open('C:/Users/stafasca/Documents/SANOFI/App_lipids_SAR/st_images/SaturatedTail.png').convert('RGB')
-img_unsaturated_tail = PIL.Image.open('C:/Users/stafasca/Documents/SANOFI/App_lipids_SAR/st_images/UnsaturatedTail.png').convert('RGB')
+img_saturated_tail = PIL.Image.open(os.path.join(base_dir, 'st_images', 'SaturatedTail.png')).convert('RGB')
+
+img_unsaturated_tail = PIL.Image.open(os.path.join(base_dir, 'st_images', 'UnsaturatedTail.png')).convert('RGB')
+
 tail_saturation_img_dict = {'saturated_tail': img_saturated_tail, 'unsaturated_tail': img_unsaturated_tail}
 
 # Tail branches conf
-img_branched_tail = PIL.Image.open('C:/Users/stafasca/Documents/SANOFI/App_lipids_SAR/st_images/BranchedTail.png').convert('RGB')
-img_unbranched_tail = PIL.Image.open('C:/Users/stafasca/Documents/SANOFI/App_lipids_SAR/st_images/UnbranchedTail.png').convert('RGB')
+img_branched_tail = PIL.Image.open(os.path.join(base_dir, 'st_images', 'BranchedTail.png')).convert('RGB')
+
+img_unbranched_tail = PIL.Image.open(os.path.join(base_dir, 'st_images', 'UnbranchedTail.png')).convert('RGB')
+
 tail_branch_img_dict = {'branched_tail': img_branched_tail, 'unbranched_tail': img_unbranched_tail}
 
 
@@ -159,20 +164,18 @@ st.markdown("## <center> Resulting lipids</center>", unsafe_allow_html=True)
 
 
 
-from io import BytesIO
-import base64
+
 st.write('---')
 for index, row in filtered_df.iterrows():
     container = st.container()
-    img = Image.open(f"C:/Users/stafasca/Documents/SANOFI/App_lipids_SAR/lipid_images/lipid{index}.jpg")
+    img = Image.open(os.path.join(base_dir, 'lipid_images', f'lipid{index}.jpg'))
+
 
     with container:
         st.write(f"     **Lipid ID:** {row['catlipid_id']}")
         st.write(f"     **Family:** {row['CATLIPID_FAMILY_NAME']}")
         st.write(f"     **EPO 6h :** {row['max_epo_conc_mean_6hr']} ng/ml")
         st.write(f"     **EPO 24h :** {row['max_epo_conc_mean_24hr']} ng/ml")
-
-        img = Image.open(f"C:/Users/stafasca/Documents/SANOFI/App_lipids_SAR/lipid_images/lipid{index}.jpg")
         st.image(img)
         st.write('---')
 
