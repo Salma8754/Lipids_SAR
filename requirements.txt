@@ -1,4 +1,6 @@
 altair==4.2.2
+sqlalchemy-mixins
+snowflake-sqlalchemy
 streamlit-aggrid
 streamlit
 streamlit_image_select
