@@ -96,25 +96,32 @@ with col2:
 if len(filtered_linkers)>0:
     filtered_df = filtered_df[filtered_df[selected_linker_smiles]]
 
+# Tail saturation indicators
+sat = sum(filtered_df.double_bonds_per_tail == 0)
+unsat = sum(filtered_df.double_bonds_per_tail > 0)
 
+filtered_df
 with col3:
     st.markdown("## Tail")
     st.write('---')
     st.markdown("#### Tail Saturation")
-    tail_saturation = image_select("", [img_saturated_tail, img_unsaturated_tail])
+    tail_saturation = image_select("", [img_saturated_tail, img_unsaturated_tail], captions=[f"{sat} lipids", f"{unsat} lipids"])
     tail_saturation_msg = list(tail_saturation_img_dict.keys())[list(tail_saturation_img_dict.values()).index(tail_saturation)]
 
 # Filtering df with tail saturation
-
 if tail_saturation_msg == 'unsaturated_tail':
     filtered_df = filtered_df[filtered_df["double_bonds_per_tail"] > 0]
 else:
     filtered_df = filtered_df[filtered_df["double_bonds_per_tail"] <= 0]
 
+# Tail branching indicators
+bran = sum(filtered_df.branches_in_tails > 0)
+unbran = sum(filtered_df.branches_in_tails <= 0)
+
 
 with col3:
     st.markdown("#### Tail Branching")
-    tail_branch = image_select('', [img_unbranched_tail, img_branched_tail])
+    tail_branch = image_select('', [img_unbranched_tail, img_branched_tail], captions=[f"{unbran} lipids", f"{bran} lipids"])
     tail_branch_msg = list(tail_branch_img_dict.keys())[list(tail_branch_img_dict.values()).index(tail_branch)]
 
 
@@ -178,9 +185,6 @@ for index, row in filtered_df.iterrows():
         st.write(f"     **EPO 24h :** {row['max_epo_conc_mean_24hr']} ng/ml")
         st.image(img)
         st.write('---')
-
-
-
 
 
 
