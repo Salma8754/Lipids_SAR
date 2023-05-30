@@ -174,7 +174,7 @@ st.markdown("## <center> Resulting lipids</center>", unsafe_allow_html=True)
 st.write('---')
 for index, row in filtered_df.iterrows():
     container = st.container()
-    img = Image.open(os.path.join(base_dir, 'lipid_images', f'lipid{index}.jpg'))
+    img = Image.open('lipid_images/'+ f'lipid{index}.jpg')
 
 
     with container:
