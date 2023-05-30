@@ -22,6 +22,6 @@ COPY . .
 
 #HEALTHCHECK CMD curl --fail http://localhost:8502/_stcore/health
 
-#ENTRYPOINT ["streamlit", "run", "main.py", "--server.port=8502", "--server.address=0.0.0.0"]
+ENTRYPOINT ["streamlit", "run", "main.py"]
 
-CMD ["watchmedo", "auto-restart", "--directory", ".", "--pattern", "*.py", "--recursive", "--", "streamlit", "run", "main.py", "--server.port", "8502", "--server.address", "0.0.0.0"]
+#CMD ["watchmedo", "auto-restart", "--directory", ".", "--pattern", "*.py", "--recursive", "--", "streamlit", "run", "main.py", "--server.port", "8502", "--server.address", "0.0.0.0"]
