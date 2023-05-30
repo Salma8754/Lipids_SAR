@@ -100,7 +100,6 @@ if len(filtered_linkers)>0:
 sat = sum(filtered_df.double_bonds_per_tail == 0)
 unsat = sum(filtered_df.double_bonds_per_tail > 0)
 
-filtered_df
 with col3:
     st.markdown("## Tail")
     st.write('---')
