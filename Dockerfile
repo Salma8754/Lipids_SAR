@@ -18,4 +18,4 @@ COPY . .
 
 # Set the command to run the Streamlit app
 #CMD ["streamlit", "run", "main.py", "--server.enableCORS", "false", "--server.port", "8501", "--server.address", "0.0.0.0"]
-CMD ["watchmedo", "auto-restart", "--directory", ".", "--pattern", "*.py", "--recursive", "--", "streamlit", "run", "main.py", "--server.port", "8502", "--server.address", "0.0.0.0"]
+CMD ["watchmedo", "auto-restart", "--directory", ".", "--pattern", "*.py", "--recursive", "--", "streamlit", "run", "main.py", "--server.port", "8080", "--server.address", "0.0.0.0"]
