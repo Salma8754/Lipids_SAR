@@ -2,9 +2,9 @@
 
 FROM python:3.9-slim
 
-COPY ./ /app/
-
 WORKDIR /app
+
+COPY requirements.txt .
 
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -16,11 +16,11 @@ RUN apt-get update && apt-get install -y \
 
 #RUN git clone https://github.com/streamlit/streamlit-example.git .
 
-RUN pip3 install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-EXPOSE 8502
+COPY . .
 
-HEALTHCHECK CMD curl --fail http://localhost:8502/_stcore/health
+#HEALTHCHECK CMD curl --fail http://localhost:8502/_stcore/health
 
 #ENTRYPOINT ["streamlit", "run", "main.py", "--server.port=8502", "--server.address=0.0.0.0"]
 
