@@ -1,5 +1,6 @@
 import streamlit as st
 from streamlit_image_select import image_select
+import numpy as np
 
 from PIL import Image
 import PIL.Image
@@ -7,7 +8,7 @@ import os
 
 from data_fetcher import df
 from fragments import link_fragments, head_fragments
-from utils import smiles_to_img, smarts_to_img
+from utils import smiles_to_img, smarts_to_img, generate_image_with_text
 
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -41,10 +42,12 @@ st.write('---')
 
 # Create a two-column layout
 col1, col2, col3 = st.columns([1, 1, 1])
+img_all = generate_image_with_text('All')
 
 
 # Head fragment drawings
-head_imgs = [smiles_to_img(hf) for hf in head_fragments]
+head_imgs = [img_all] + [smiles_to_img(hf) for hf in head_fragments]
+head_fragments = ['ALL'] + head_fragments
 head_img_dict = {head_fragments[i] : head_imgs[i] for i in range(len(head_imgs))}
 
 
@@ -69,49 +72,69 @@ tail_branch_img_dict = {'branched_tail': img_branched_tail, 'unbranched_tail': i
 with col1:
     st.markdown("## Head Group")
     st.write('---')
-    selected_head = image_select("Head Fragment", head_imgs, use_container_width=False)
+    selected_head = image_select("Select Head Fragment", head_imgs, use_container_width=False)
     selected_head_smiles = list(head_img_dict.keys())[list(head_img_dict.values()).index(selected_head)]
 
-# Filtering df with head fragment
-filtered_df = df[df[selected_head_smiles]]
+# Filtering df with head fragment if 'ALL' is not selected
+if selected_head_smiles != 'ALL':
+    filtered_df = df[df[selected_head_smiles]]
+else:
+    filtered_df = df
 
 filtered_linkers = []
 for l in link_fragments:
     if sum(filtered_df[l]) > 0:
         filtered_linkers.append(l)
 
+
 # Linker drawings
-link_imgs = [smarts_to_img(hf) for hf in filtered_linkers]
+
+
+
+link_imgs = [img_all] + [smarts_to_img(hf) for hf in filtered_linkers]
+filtered_linkers = ['ALL'] + filtered_linkers
 link_img_dict = {filtered_linkers[i] : link_imgs[i] for i in range(len(link_imgs))}
 
 with col2:
     st.markdown("## Linker")
     st.write('---')
     if len(filtered_linkers)>0:
-        selected_link = image_select("Linker", link_imgs, use_container_width=False)
+        selected_link = image_select("Select Linker Pattern", link_imgs, use_container_width=False)
         selected_linker_smiles = list(link_img_dict.keys())[list(link_img_dict.values()).index(selected_link)]
 
 
 # Filtering df with linker
-if len(filtered_linkers)>0:
+if selected_linker_smiles != 'ALL':
+    print('im here')
     filtered_df = filtered_df[filtered_df[selected_linker_smiles]]
 
-# Tail saturation indicators
-sat = sum(filtered_df.double_bonds_per_tail == 0)
-unsat = sum(filtered_df.double_bonds_per_tail > 0)
+possible_deg_sat = np.sort(filtered_df.double_bonds_per_tail.unique())
+
 
 with col3:
     st.markdown("## Tail")
     st.write('---')
     st.markdown("#### Tail Saturation")
-    tail_saturation = image_select("", [img_saturated_tail, img_unsaturated_tail], captions=[f"{sat} lipids", f"{unsat} lipids"])
-    tail_saturation_msg = list(tail_saturation_img_dict.keys())[list(tail_saturation_img_dict.values()).index(tail_saturation)]
 
-# Filtering df with tail saturation
-if tail_saturation_msg == 'unsaturated_tail':
-    filtered_df = filtered_df[filtered_df["double_bonds_per_tail"] > 0]
-else:
-    filtered_df = filtered_df[filtered_df["double_bonds_per_tail"] <= 0]
+    selected_number_double_bonds = st.selectbox('Number of double bonds per tail (total number of double bonds normalized by number of tails)', possible_deg_sat)
+
+if selected_number_double_bonds is not None:
+    st.markdown("## case where number of db is selected and is :", selected_number_double_bonds)
+    filtered_df = filtered_df[filtered_df["double_bonds_per_tail"] == selected_number_double_bonds]
+
+# Tail saturation indicators --> not very useful
+#sat = sum(filtered_df.double_bonds_per_tail == 0)
+#unsat = sum(filtered_df.double_bonds_per_tail > 0)
+
+# with col3: # not very useful
+#     tail_saturation = image_select("", [img_saturated_tail, img_unsaturated_tail], captions=[f"{sat} lipids", f"{unsat} lipids"])
+#     tail_saturation_msg = list(tail_saturation_img_dict.keys())[list(tail_saturation_img_dict.values()).index(tail_saturation)]
+#
+# # Filtering df with tail saturation
+# if tail_saturation_msg == 'unsaturated_tail':
+#     filtered_df = filtered_df[filtered_df["double_bonds_per_tail"] > 0]
+# else:
+#     filtered_df = filtered_df[filtered_df["double_bonds_per_tail"] <= 0]
 
 # Tail branching indicators
 bran = sum(filtered_df.branches_in_tails > 0)
@@ -132,7 +155,7 @@ else:
 
 
 # Get available numbers of tails
-list_tail_numbers = filtered_df["num_tails"].unique()
+list_tail_numbers = np.sort(filtered_df["num_tails"].unique())
 
 with col3:
     num_tails = st.selectbox('#### Number of Tails', list_tail_numbers)
