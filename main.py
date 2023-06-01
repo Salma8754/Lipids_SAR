@@ -119,7 +119,6 @@ with col3:
     selected_number_double_bonds = st.selectbox('Number of double bonds per tail (total number of double bonds normalized by number of tails)', possible_deg_sat)
 
 if selected_number_double_bonds is not None:
-    st.markdown("## case where number of db is selected and is :", selected_number_double_bonds)
     filtered_df = filtered_df[filtered_df["double_bonds_per_tail"] == selected_number_double_bonds]
 
 # Tail saturation indicators --> not very useful
