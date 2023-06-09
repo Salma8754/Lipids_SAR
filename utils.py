@@ -3,6 +3,10 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 import io
 from PIL import Image, ImageDraw, ImageFont
+from stmol import showmol
+import py3Dmol
+from rdkit import Chem
+from rdkit.Chem import AllChem
 
 # Define a function to convert a molecule string to an image
 
@@ -32,8 +36,8 @@ def smarts_to_img(mol_str, size=(300, 300)):
     return img
 
 
-def generate_image_with_text(text, font_size=24, text_color=(0, 0, 0), background_color=(255, 255, 255),
-                             image_size=(100, 100), font_path=None):
+def generate_image_with_text(text, font_size=40, text_color=(0, 0, 0), background_color=(255, 255, 255),
+                             image_size=(300, 300), font_path="ARIAL.TTF"):
     # Create a blank image
     image = Image.new('RGB', image_size, background_color)
 
@@ -46,6 +50,7 @@ def generate_image_with_text(text, font_size=24, text_color=(0, 0, 0), backgroun
     else:
         font = ImageFont.load_default()
 
+
     # Calculate the position to center the text
     text_width, text_height = draw.textsize(text, font=font)
     x = (image_size[0] - text_width) // 2
@@ -57,5 +62,28 @@ def generate_image_with_text(text, font_size=24, text_color=(0, 0, 0), backgroun
     return image
 
 
+
+
+
+def makeblock(smi):
+    mol = Chem.MolFromSmiles(smi)
+    #mol = Chem.AddHs(mol)
+    AllChem.EmbedMolecule(mol)
+    mblock = Chem.MolToMolBlock(mol)
+    return mblock
+
+def render_mol(xyz, surf):
+    xyzview = py3Dmol.view(width=400, height=400)
+    xyzview.addModel(xyz,'mol')
+    xyzview.setStyle({'stick': {}})
+
+    # Add surface representation with contour --> crazy!
+    if surf:
+        xyzview.addSurface(py3Dmol.VDW, {'opacity': 0.8, 'color': 'spectrum', 'contour': True})
+
+    xyzview.setBackgroundColor('white')
+    xyzview.zoomTo()
+
+    showmol(xyzview, height=400, width=400)
 
 
