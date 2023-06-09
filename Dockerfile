@@ -13,9 +13,12 @@ COPY requirements.txt .
 # Install the dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy the packages from the Python base image to your image
+COPY --from=python:3.9 /usr/local/lib/python3.9/site-packages/ /usr/local/lib/python3.9/site-packages/
+
 # Copy the rest of the application code to the container
 COPY . .
 
 # Set the command to run the Streamlit app
-#CMD ["streamlit", "run", "main.py", "--server.enableCORS", "false", "--server.port", "8501", "--server.address", "0.0.0.0"]
+#CMD ["streamlit", "run", "main.py", "--server.enableCORS", "false", "--server.port", "8502", "--server.address", "0.0.0.0"]
 CMD ["watchmedo", "auto-restart", "--directory", ".", "--pattern", "*.py", "--recursive", "--", "streamlit", "run", "main.py", "--server.port", "8080", "--server.address", "0.0.0.0"]
