@@ -1,14 +1,20 @@
 import streamlit as st
 from streamlit_image_select import image_select
 import numpy as np
-
+from plotly import express as px
 from PIL import Image
 import PIL.Image
 import os
-
 from data_fetcher import df
 from fragments import link_fragments, head_fragments
 from utils import smiles_to_img, smarts_to_img, generate_image_with_text
+from streamlit_plotly_events import plotly_events
+from dim_reduction import df_pca, df_umap, custom_plot_pca, custom_plot_umap
+from stmol import showmol
+import py3Dmol
+from rdkit import Chem
+from rdkit.Chem import AllChem
+import streamlit.components.v1 as components
 
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -16,6 +22,7 @@ base_dir = os.path.abspath(os.path.dirname(__file__))
 df["num_tails"] = df["num_tails"].astype(int)
 
 
+#st.write(time.time()-itime)
 # Set the page configuration
 st.set_page_config( layout='wide')
 
@@ -31,6 +38,12 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+
+
+#custom_plot_umap = cp2.interactive_plot(kind='scatter')
+#custom_plot_pca = cp1.interactive_plot(kind='scatter')
+
 
 
 
@@ -67,10 +80,15 @@ tail_branch_img_dict = {'branched_tail': img_branched_tail, 'unbranched_tail': i
 
 
 
+#########################################################
+
+#                       Head Group
+
+#########################################################
 
 
 with col1:
-    st.markdown("## Head Group")
+    st.markdown("### Head Group")
     st.write('---')
     selected_head = image_select("Select Head Fragment", head_imgs, use_container_width=False)
     selected_head_smiles = list(head_img_dict.keys())[list(head_img_dict.values()).index(selected_head)]
@@ -95,8 +113,15 @@ link_imgs = [img_all] + [smarts_to_img(hf) for hf in filtered_linkers]
 filtered_linkers = ['ALL'] + filtered_linkers
 link_img_dict = {filtered_linkers[i] : link_imgs[i] for i in range(len(link_imgs))}
 
+
+#########################################################
+
+#                       Linkers
+
+#########################################################
+
 with col2:
-    st.markdown("## Linker")
+    st.markdown("### Linker")
     st.write('---')
     if len(filtered_linkers)>0:
         selected_link = image_select("Select Linker Pattern", link_imgs, use_container_width=False)
@@ -110,9 +135,14 @@ if selected_linker_smiles != 'ALL':
 
 possible_deg_sat = np.sort(filtered_df.double_bonds_per_tail.unique())
 
+#########################################################
+
+#                       Tails
+
+#########################################################
 
 with col3:
-    st.markdown("## Tail")
+    st.markdown("### Tail")
     st.write('---')
     st.markdown("#### Tail Saturation")
 
@@ -140,9 +170,15 @@ bran = sum(filtered_df.branches_in_tails > 0)
 unbran = sum(filtered_df.branches_in_tails <= 0)
 
 
+#########################################################
+
+#                       Tails
+
+#########################################################
+
 with col3:
     st.markdown("#### Tail Branching")
-    tail_branch = image_select('', [img_unbranched_tail, img_branched_tail], captions=[f"{unbran} lipids", f"{bran} lipids"])
+    tail_branch = image_select('', [img_unbranched_tail, img_branched_tail], captions=[f"{unbran} lipids", f"{bran} lipids"], use_container_width=False)
     tail_branch_msg = list(tail_branch_img_dict.keys())[list(tail_branch_img_dict.values()).index(tail_branch)]
 
 
@@ -157,7 +193,8 @@ else:
 list_tail_numbers = np.sort(filtered_df["num_tails"].unique())
 
 with col3:
-    num_tails = st.selectbox('#### Number of Tails', list_tail_numbers)
+    st.markdown("#### Number of tails")
+    num_tails = st.selectbox('', list_tail_numbers)
 
 # Filter df with number of tails
 
@@ -188,32 +225,145 @@ st.markdown("## <center> Resulting lipids</center>", unsafe_allow_html=True)
 
 
 
-# Display the dataframe in Streamlit
+
+
+#scatter = px.scatter(filtered_df, x=filtered_df.max_epo_conc_mean_6hr, y=filtered_df.max_epo_conc_mean_6hr, color=filtered_df.max_epo_conc_mean_6hr, color_continuous_scale='viridis', opacity=0.7, title="Lipids Space")
+scatter1 = px.scatter(df_pca, x=df_pca.columns[0], y=df_pca.columns[1], color=df_pca["target"], color_continuous_scale='viridis', opacity=0.7, title="Lipids Space")
+#scatter2 = px.scatter(df_tsne, x=df_tsne.columns[0], y=df_tsne.columns[1], color=df_tsne["target"], color_continuous_scale='viridis', opacity=0.7, title="Lipids Space")
+scatter3 = px.scatter(df_umap, x=df_umap.columns[0], y=df_umap.columns[1],
+                      color=df_umap["target"], color_continuous_scale='viridis',
+                      opacity=0.7, title="Lipids Space"                      )
+
+#scatter3.update_traces(customdata=lip_imgs)
+
+scatter1.update_layout(height=400, width=500)
+#scatter2.update_layout(height=400, width=500)
+scatter3.update_layout(height=400, width=500)
 
 
 
 
-st.write('---')
-for index, row in filtered_df.iterrows():
-    container = st.container()
-    img = Image.open('lipid_images/'+ f'lipid{index}.jpg')
 
 
-    with container:
-        st.write(f"     **Lipid ID:** {row['catlipid_id']}")
-        st.write(f"     **Family:** {row['CATLIPID_FAMILY_NAME']}")
-        st.write(f"     **EPO 6h :** {row['max_epo_conc_mean_6hr']} ng/ml")
-        st.write(f"     **EPO 24h :** {row['max_epo_conc_mean_24hr']} ng/ml")
-        st.image(img)
+
+
+
+
+
+
+
+
+#########################################################
+
+#                       SIDEBAR
+
+#########################################################
+
+st.sidebar.write('**Visualization Parameters**')
+
+sim_type = st.sidebar.radio(
+    "Which similarity type do you want to use?",
+    ('tailored', 'structural'),
+    help='Use tailored when you have a target value. Use structural to plot your molecules based on structure only.')
+
+dim_red_algo = st.sidebar.radio(
+    "Which algorithm you want to use?",
+    ('PCA', 'UMAP'),
+    help='UMAP is non linear resulting in better clusters. PCA is linear resulting in a more global view.')
+
+plot_type = st.sidebar.radio(
+    "Which plot type do you want to display?",
+    ('scatter', 'hex'),
+    help='Visualize a scatter plot or an hexagonal plot.')
+
+#########################################################
+
+#                       Visualization
+
+#########################################################
+
+
+col4, col5 = st.columns((1, 3))
+
+hvar = """ 
+        <script> 
+                var elements = window.parent.document.querySelectorAll('.streamlit-expanderHeader');
+                elements[0].style.color = 'rgba(83, 36, 118, 1)';
+                elements[0].style.fontSize = 'x-large';
+        </script>
+    """
+
+data_scatter_plot = st.expander("Visualize the Lipids Space", expanded=False)
+
+with data_scatter_plot:
+    if dim_red_algo == 'PCA':
+
+        st.bokeh_chart(custom_plot_pca, use_container_width=True)
+        #selected_points1 = plotly_events(scatter1, select_event=True, click_event=True, hover_event=False)
+    else:
+        st.bokeh_chart(custom_plot_umap, use_container_width=True)
+        #selected_points2 = plotly_events(scatter2, select_event=True, click_event=True, hover_event=False)
+        #selected_points3 = plotly_events(scatter3, select_event=True, click_event=True, hover_event=False)
+
+
+
+data_lipids_plot = st.expander("Visualize individual Lipids", expanded=False)
+
+with col4:
+    with data_lipids_plot:
         st.write('---')
+        for index, row in filtered_df.iterrows():
+            container = st.container()
+            img = Image.open('lipid_images/' + f'lipid{index}.jpg')
+
+            with container:
+                st.write(f"     **Lipid ID:** {row['catlipid_id']}")
+                st.write(f"     **Family:** {row['CATLIPID_FAMILY_NAME']}")
+                st.write(f"     **EPO 6h :** {row['max_epo_conc_mean_6hr']} ng/ml")
+                st.write(f"     **EPO 24h :** {row['max_epo_conc_mean_24hr']} ng/ml")
+                st.image(img)
+                st.write('---')
 
 
 
-
-# Custom CSS styling for the container
-container_style = """
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    padding: 10px;
-    margin-bottom: 10px;
+hvar = """ 
+    <script> 
+            var elements = window.parent.document.querySelectorAll('.streamlit-expanderHeader');
+            elements[0].style.color = 'rgba(83, 36, 118, 1)';
+            elements[0].style.fontSize = 'x-large';
+            elements[1].style.color = 'rgba(83, 36, 118, 1)';
+            elements[1].style.fontSize = 'x-large';
+    </script>
 """
+
+components.html(hvar, height=0, width=0)
+
+########### 3D mol plot ##############
+
+def makeblock(smi):
+    mol = Chem.MolFromSmiles(smi)
+    #mol = Chem.AddHs(mol)
+    AllChem.EmbedMolecule(mol)
+    mblock = Chem.MolToMolBlock(mol)
+    return mblock
+
+def render_mol(xyz):
+    xyzview = py3Dmol.view()#(width=400,height=400)
+    xyzview.addModel(xyz,'mol')
+    xyzview.setStyle({'stick': {}})
+
+    # Add surface representation with contour --> crazy
+    #xyzview.addSurface(py3Dmol.VDW, {'opacity': 0.8, 'color': 'spectrum', 'contour': True})
+
+    xyzview.setBackgroundColor('white')
+    #xyzview.zoomTo()
+
+    showmol(xyzview, height=500, width=500)
+
+
+#compound_smiles=st.text_input('SMILES please','CC')
+#blk=makeblock(compound_smiles)
+#render_mol(blk)
+
+########### end 3D mol plot ##############
+
