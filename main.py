@@ -353,6 +353,22 @@ components.html(hvar, height=0, width=0)
 
 #########################################################
 
+#            Display molecules using mols2grid
+
+#########################################################
+
+import mols2grid
+import streamlit.components.v1 as components
+
+
+raw_viz = mols2grid.display(filtered_df, smiles_col="canonical_smiles", ncols=4, nrows=3)._repr_html_()
+components.html(raw_viz, width=1000, height=1000, scrolling=True)
+
+
+
+
+#########################################################
+
 #                    Footnotes
 
 #########################################################
@@ -364,6 +380,8 @@ st.write('Interactive app:       https://akshay.bio/blog/interactive-browser')
 st.write('Umap and PCA visuals:   https://github.com/mcsorkun/ChemPlot-web')
 
 st.write('**App in progress, more notes and features to come.**')
+
+
 
 
 
