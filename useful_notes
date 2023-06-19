@@ -1,0 +1,7 @@
+Problem:
+Encountered the following error when deploying on SCALe (OpenShift):
+RuntimeError: cannot cache function 'xxx': no locator available for file xxx
+
+Solution:
+Added an environment variable to the pod:
+NUMBA_CACHE_DIR: /tmp

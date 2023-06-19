@@ -1,25 +1,32 @@
 import os
 
 import streamlit as st
+from rdkit.Chem import Draw
 from streamlit_image_select import image_select
 import streamlit.components.v1 as components
+from rdkit import Chem
 
 import numpy as np
+import pandas as pd
 from plotly import express as px
 from PIL import Image
 import PIL.Image
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
 from fragments import link_fragments, head_fragments
 
-from utils import smiles_to_img, smarts_to_img, makeblock, render_mol, generate_image_with_text
-from dim_reduction import df_pca, df_umap, custom_plot_pca, custom_plot_umap
+from utils import smiles_to_img, makeblock, render_mol, generate_image_with_text, \
+    highlight_aromatic_atoms
+from dim_reduction import df_pca, df_umap #, custom_plot_pca, custom_plot_umap
 from data_fetcher import df
+from streamlit_plotly_events import plotly_events
 
 
 
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
+
+df = pd.concat([df_pca.iloc[:,0:2], df_umap.iloc[:,0:2], df], axis=1)
 
 df["num_tails"] = df["num_tails"].astype(int)
 
@@ -48,7 +55,7 @@ st.markdown(
 )
 
 # Add a title
-st.markdown("## <center> Exploring Lipids Space - Structure Activity Relationship</center>", unsafe_allow_html=True)
+st.markdown("## <center> Exploring Lipids Space </center>", unsafe_allow_html=True)
 st.markdown("##### <center> Filter Lipids by Head-Linker-Tail properties</center>", unsafe_allow_html=True)
 
 st.markdown("## ", unsafe_allow_html=True)
@@ -76,6 +83,16 @@ img_all = generate_image_with_text('Unspecified')
 #########################################################
 
 st.sidebar.write('**Visualization Parameters**')
+
+target_value = st.sidebar.radio(
+            "Target value for the scatterplot",
+            ('Epo conc. 6hr ng/ml', 'Epo conc. 24hr ng/ml', 'Molar Weight', 'Lipid Family'))
+
+target_dict = {'Epo conc. 6hr ng/ml': 'max_epo_conc_mean_6hr',
+               'Epo conc. 24hr ng/ml': 'max_epo_conc_mean_24hr',
+               'Molar Weight': 'MOL_WT',
+               'Lipid Family': 'CATLIPID_FAMILY_NAME'}
+
 
 dim_red_algo = st.sidebar.radio(
             "Algorithm used for the scatterplot",
@@ -150,7 +167,7 @@ for l in link_fragments:
 #########################################################
 
 # Linker drawings
-link_imgs = [img_all] + [smarts_to_img(hf) for hf in filtered_linkers]
+link_imgs = [img_all] + [highlight_aromatic_atoms(hf) for hf in filtered_linkers]
 filtered_linkers = ['ALL'] + filtered_linkers
 link_img_dict = {filtered_linkers[i] : link_imgs[i] for i in range(len(link_imgs))}
 
@@ -158,7 +175,7 @@ with col2:
     st.markdown("### Linker")
     st.write('---')
     if len(filtered_linkers)>0:
-        selected_link = image_select("Select Linker Pattern", link_imgs, use_container_width=False)
+        selected_link = image_select("Select Linker Pattern (highlighted atoms are aromatic)", link_imgs, use_container_width=False)
         selected_linker_smiles = list(link_img_dict.keys())[list(link_img_dict.values()).index(selected_link)]
 
 
@@ -262,6 +279,99 @@ if num_tails and num_tails != 'Unspecified':
 st.write('---')
 #st.markdown(f"## <center> Resulting lipids ({len(filtered_df)}) </center>", unsafe_allow_html=True)
 
+st.markdown(f"{len(filtered_df)} Resulting Lipid(s)")
+
+st.write('---')
+
+
+#########################################################
+
+#                   Display Scatter  Plots
+
+#########################################################
+
+
+col4, col5 = st.columns([3, 1])
+
+
+filtered_df_pca = df_pca[df_pca.index.isin(filtered_df.index)]
+filtered_df_umap = df_umap[df_umap.index.isin(filtered_df.index)]
+
+target = target_dict[target_value]
+
+col_pca1 = filtered_df.columns[0]
+col_pca2 = filtered_df.columns[1]
+col_umap1 = filtered_df.columns[2]
+col_umap2 = filtered_df.columns[3]
+
+if dim_red_algo == 'PCA':
+    col1 = col_pca1
+    col2 = col_pca2
+else:
+    col1 = col_umap1
+    col2 = col_umap2
+
+#scatter = px.scatter(filtered_df, x=filtered_df.max_epo_conc_mean_6hr, y=filtered_df.max_epo_conc_mean_6hr, color=filtered_df.max_epo_conc_mean_6hr, color_continuous_scale='viridis', opacity=0.7, title="Lipids Space")
+scatter1 = px.scatter(filtered_df, x=col1, y=col2, color=filtered_df[target],
+                      hover_name='catlipid_id', custom_data=['catlipid_id', target],
+                      color_continuous_scale='viridis', opacity=0.7, title="")
+# Set the hovertemplate to only include the column specified in custom_data
+scatter1.update_traces(hovertemplate="Lipid ID: %{customdata[0]}<br>{target}: %{customdata[1]}")
+# Add the uirevision parameter to maintain zoom level after point selection
+#scatter1.update_layout(uirevision='constant', height=500, width=800)
+with col4:
+    #scatterplot = st.plotly_chart(scatter1, use_container_width=True)
+    #selected_points = scatterplot["props"]["figure"]["selectedData"]
+
+    st.markdown(f"### <center> Lipids space ({target_value})</center>", unsafe_allow_html=True)
+    st.markdown(f"##### <center> Select lipids to display their structure</center>", unsafe_allow_html=True)
+
+    selected_points = plotly_events(scatter1, select_event=True, click_event=True, hover_event=False)
+
+
+with col5:
+    if(len(selected_points)>0):
+        indices = []
+        for i in range(len(selected_points)):
+            for id, row in filtered_df.iterrows():
+                if filtered_df[col1][id] == selected_points[i]["x"] and filtered_df[col2][id] == selected_points[i]["y"] :
+                    indices.append(id)
+
+        num_molecules = len(selected_points)
+        smiles_list = [filtered_df.canonical_smiles[i] for i in indices]
+        lipid_ids = [filtered_df.catlipid_id[i] for i in indices]
+        lipid_epo = [filtered_df.max_epo_conc_mean_6hr[i] for i in indices]
+
+        mol_list = [Chem.MolFromSmiles(x) for x in smiles_list]
+        img = Draw.MolsToGridImage(mol_list[:num_molecules], molsPerRow=3, subImgSize=(200, 200), returnPNG=False,
+                                   legends=[f"{lipid_ids[i]} EPO: {lipid_epo[i]}" for i in range(len(lipid_ids))])
+
+        st.write(
+            '<h4 style="text-align: center; font-size: 22px; font-family: sans-serif;">Selected lipids</h4>',
+            unsafe_allow_html=True)
+
+        st.image(img)
+
+
+
+
+
+
+hvar = """ 
+    <script> 
+            var elements = window.parent.document.querySelectorAll('.streamlit-expanderHeader');
+            elements[0].style.color = 'rgba(83, 36, 118, 1)';
+            elements[0].style.fontSize = 'x-large';
+            elements[1].style.color = 'rgba(83, 36, 118, 1)';
+            elements[1].style.fontSize = 'x-large';
+    </script>
+"""
+
+components.html(hvar, height=0, width=0)
+
+
+
+
 
 
 #########################################################
@@ -271,7 +381,7 @@ st.write('---')
 #########################################################
 
 
-data_lipids_plot = st.expander(f"Resulting Lipids ({len(filtered_df)})", expanded=False)
+data_lipids_plot = st.expander(f"Visualize Individual Lipids ({len(filtered_df)})", expanded=False)
 with data_lipids_plot:
     st.write('---')
     for index, row in filtered_df.head(10).iterrows():
@@ -297,58 +407,7 @@ with data_lipids_plot:
 
 
 
-
-
-
-#########################################################
-
-#                   Display Scatter  Plots
-
-#########################################################
-
-filtered_df_pca = df_pca[df_pca.index.isin(filtered_df.index)]
-filtered_df_umap = df_umap[df_umap.index.isin(filtered_df.index)]
-
-#scatter = px.scatter(filtered_df, x=filtered_df.max_epo_conc_mean_6hr, y=filtered_df.max_epo_conc_mean_6hr, color=filtered_df.max_epo_conc_mean_6hr, color_continuous_scale='viridis', opacity=0.7, title="Lipids Space")
-scatter1 = px.scatter(filtered_df_pca, x=filtered_df_pca.columns[0], y=filtered_df_pca.columns[1], color=filtered_df_pca["target"], color_continuous_scale='viridis', opacity=0.7, title="Lipids Space")
-#scatter2 = px.scatter(df_tsne, x=df_tsne.columns[0], y=df_tsne.columns[1], color=df_tsne["target"], color_continuous_scale='viridis', opacity=0.7, title="Lipids Space")
-scatter3 = px.scatter(filtered_df_umap, x=filtered_df_umap.columns[0], y=filtered_df_umap.columns[1],
-                      color=filtered_df_umap["target"], color_continuous_scale='viridis',
-                      opacity=0.7, title="Lipids Space"                      )
-
-
-scatter1.update_layout(height=400, width=500)
-#scatter2.update_layout(height=400, width=500)
-scatter3.update_layout(height=400, width=500)
-
-
-
-data_scatter_plot = st.expander("Visualize the Lipids Space", expanded=False)
-
-with data_scatter_plot:
-    st.markdown("<h6 style='text-align: center;'>EPO concentration 6hr (ng/ml)</h6>", unsafe_allow_html=True)
-    if dim_red_algo == 'PCA':
-        st.bokeh_chart(custom_plot_pca, use_container_width=True)
-        #selected_points1 = plotly_events(scatter1, select_event=True, click_event=True, hover_event=False)
-    else:
-        st.bokeh_chart(custom_plot_umap, use_container_width=True)
-        #selected_points2 = plotly_events(scatter2, select_event=True, click_event=True, hover_event=False)
-        #selected_points3 = plotly_events(scatter3, select_event=True, click_event=True, hover_event=False)
-
-
-
-
-hvar = """ 
-    <script> 
-            var elements = window.parent.document.querySelectorAll('.streamlit-expanderHeader');
-            elements[0].style.color = 'rgba(83, 36, 118, 1)';
-            elements[0].style.fontSize = 'x-large';
-            elements[1].style.color = 'rgba(83, 36, 118, 1)';
-            elements[1].style.fontSize = 'x-large';
-    </script>
-"""
-
-components.html(hvar, height=0, width=0)
+#st.write(filtered_df)
 
 
 #########################################################
@@ -361,8 +420,8 @@ import mols2grid
 import streamlit.components.v1 as components
 
 
-raw_viz = mols2grid.display(filtered_df, smiles_col="canonical_smiles", ncols=4, nrows=3)._repr_html_()
-components.html(raw_viz, width=1000, height=1000, scrolling=True)
+#raw_viz = mols2grid.display(filtered_df, smiles_col="canonical_smiles", ncols=4, nrows=3)._repr_html_()
+#components.html(raw_viz, width=1000, height=1000, scrolling=True)
 
 
 
@@ -377,9 +436,11 @@ components.html(raw_viz, width=1000, height=1000, scrolling=True)
 st.write('---')
 st.write('##### References')
 st.write('Interactive app:       https://akshay.bio/blog/interactive-browser')
-st.write('Umap and PCA visuals:   https://github.com/mcsorkun/ChemPlot-web')
+st.write('Umap and PCA calculations:   https://github.com/mcsorkun/ChemPlot-web')
+st.write('Rendering 3D structures:   https://towardsdatascience.com/molecular-visualization-in-streamlit-using-rdkit-and-py3dmol-4e8e63488eb8')
+st.write('Tail descriptors: https://github.com/Sanofi-OneAI/oneai-mrnacoe-lnpdesign-phase1/blob/develop/src/mrna_lnp_design/modelling/features/tail_descriptors.py')
 
-st.write('**App in progress, more notes and features to come.**')
+st.write('~ App in progress ~')
 
 
 
