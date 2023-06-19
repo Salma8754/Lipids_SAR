@@ -36,6 +36,20 @@ def smarts_to_img(mol_str, size=(300, 300)):
     return img
 
 
+def highlight_aromatic_atoms(smarts):
+    # Create a molecule from the SMARTS string
+    mol = Chem.MolFromSmarts(smarts)
+
+    # Find the aromatic atoms in the molecule
+    aromatic_atoms = [atom.GetIdx() for atom in mol.GetAromaticAtoms()]
+
+    # Generate a 2D depiction of the pattern with highlighted aromatic atoms
+    img = Draw.MolToImage(mol, highlightAtoms=aromatic_atoms)
+
+    # Display the image in the Jupyter Notebook
+    return (img)
+
+
 def generate_image_with_text(text, font_size=40, text_color=(0, 0, 0), background_color=(255, 255, 255),
                              image_size=(300, 300), font_path="ARIAL.TTF"):
     # Create a blank image
