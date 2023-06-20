@@ -438,7 +438,7 @@ st.write('##### References')
 st.write('Interactive app:       https://akshay.bio/blog/interactive-browser')
 st.write('Umap and PCA calculations:   https://github.com/mcsorkun/ChemPlot-web')
 st.write('Rendering 3D structures:   https://towardsdatascience.com/molecular-visualization-in-streamlit-using-rdkit-and-py3dmol-4e8e63488eb8')
-st.write('Tail descriptors: https://github.com/Sanofi-OneAI/oneai-mrnacoe-lnpdesign-phase1/blob/develop/src/mrna_lnp_design/modelling/features/tail_descriptors.py')
+st.write('Where do head frags., linkers and tail descriptors come from? https://docs.google.com/presentation/d/1AmS17P5HHldD37zYnJl5TevwyUtoOVtT/edit#slide=id.p1')
 
 st.write('~ App in progress ~')
 
