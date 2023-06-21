@@ -447,7 +447,7 @@ with data_boxplot:
         go.Box(x=melted_df_head['head_frag'], y=melted_df_head['max_epo_conc_mean_6hr']))
 
 
-    fig_boxplot.update_layout(yaxis_range=[-12, 70])
+    fig_boxplot.update_layout(yaxis_range=[-20, 70])
 
     # Add images
 
@@ -458,10 +458,10 @@ with data_boxplot:
                 source=smiles_to_img(hf),
                 xref="x",
                 yref="y",
-                x=-0.4+idx,
-                y=-2,
-                sizex=1,
-                sizey=10,
+                x=-0.3+idx,
+                y=-4,
+                sizex=1.5,
+                sizey=15,
                 #sizing="stretch",
                 opacity=1,
                 layer="below"
