@@ -20,6 +20,7 @@ from utils import smiles_to_img, makeblock, render_mol, generate_image_with_text
 from dim_reduction import df_pca, df_umap #, custom_plot_pca, custom_plot_umap
 from data_fetcher import df
 from streamlit_plotly_events import plotly_events
+import plotly.graph_objects as go
 
 
 
@@ -30,7 +31,14 @@ df = pd.concat([df_pca.iloc[:,0:2], df_umap.iloc[:,0:2], df], axis=1)
 
 df["num_tails"] = df["num_tails"].astype(int)
 
+# Melt dataframe to transform head frags. columns into rows
+melted_df_head = df.melt(id_vars=['catlipid_id', 'max_epo_conc_mean_6hr', 'max_epo_conc_mean_24hr'],
+                         value_vars=head_fragments,
+                         var_name='head_frag',
+                         value_name='contains')
 
+# Filter dataframe to keep only True values
+melted_df_head = melted_df_head[melted_df_head['contains']==True]
 
 #########################################################
 
@@ -261,6 +269,17 @@ if num_tails and num_tails != 'Unspecified':
     filtered_df = filtered_df[filtered_df["num_tails"] == num_tails]
 
 
+# Max tail length config
+possible_max_tail_len = np.sort(filtered_df.max_tail_length.unique())
+
+
+with col3:
+    st.markdown("#### Maximum tail length")
+
+    selected_max_tail_len = st.selectbox('Length of the longest tail', ['Unspecified']+list(possible_max_tail_len))
+
+if selected_max_tail_len is not None and selected_max_tail_len != 'Unspecified':
+    filtered_df = filtered_df[filtered_df["max_tail_length"] == selected_max_tail_len]
 
 
 # Filter dataframe with descending epo
@@ -357,23 +376,6 @@ with col5:
 
 
 
-hvar = """ 
-    <script> 
-            var elements = window.parent.document.querySelectorAll('.streamlit-expanderHeader');
-            elements[0].style.color = 'rgba(83, 36, 118, 1)';
-            elements[0].style.fontSize = 'x-large';
-            elements[1].style.color = 'rgba(83, 36, 118, 1)';
-            elements[1].style.fontSize = 'x-large';
-    </script>
-"""
-
-components.html(hvar, height=0, width=0)
-
-
-
-
-
-
 #########################################################
 
 #                       Display Individual Lipids
@@ -422,6 +424,72 @@ import streamlit.components.v1 as components
 
 #raw_viz = mols2grid.display(filtered_df, smiles_col="canonical_smiles", ncols=4, nrows=3)._repr_html_()
 #components.html(raw_viz, width=1000, height=1000, scrolling=True)
+
+
+
+#########################################################
+
+#                    Boxplot -- Comparing head frags.
+
+#########################################################
+
+
+
+data_boxplot = st.expander(f"Compare head fragments", expanded=False)
+
+with data_boxplot:
+
+    # Create figure
+    fig_boxplot = go.Figure()
+
+    # Add trace
+    fig_boxplot.add_trace(
+        go.Box(x=melted_df_head['head_frag'], y=melted_df_head['max_epo_conc_mean_6hr']))
+
+
+    fig_boxplot.update_layout(yaxis_range=[-12, 70])
+
+    # Add images
+
+    for idx, hf in enumerate(head_fragments[1:]):
+
+        fig_boxplot.add_layout_image(
+            dict(
+                source=smiles_to_img(hf),
+                xref="x",
+                yref="y",
+                x=-0.4+idx,
+                y=-2,
+                sizex=1,
+                sizey=10,
+                #sizing="stretch",
+                opacity=1,
+                layer="below"
+            )
+        )
+
+    fig_boxplot.update_layout(xaxis={"visible": False}, title="EPO conc. distribution for different head fragments",
+                              yaxis_title="EPO conc. mean 6hr (ng/ml)",)
+    fig_boxplot.show()
+
+
+
+    selected_points = plotly_events(fig_boxplot, select_event=True, click_event=True, hover_event=False)
+
+
+
+
+hvar = """ 
+    <script> 
+            var elements = window.parent.document.querySelectorAll('.streamlit-expanderHeader');
+            elements[0].style.color = 'rgba(83, 36, 118, 1)';
+            elements[0].style.fontSize = 'x-large';
+            elements[1].style.color = 'rgba(83, 36, 118, 1)';
+            elements[1].style.fontSize = 'x-large';
+    </script>
+"""
+
+components.html(hvar, height=0, width=0)
 
 
 
